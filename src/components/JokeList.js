@@ -1,64 +1,89 @@
-import React, { Component } from 'react'
-import Axios from 'axios'
-import './JokeList.css'
+import React, { Component } from 'react';
+import Axios from 'axios';
+import './JokeList.css';
 import Joke from './Joke';
-import { v4 as uuidv4 } from 'uuid'
+import { v4 as uuidv4 } from 'uuid';
 
 class JokeList extends Component {
-    static defaultProps = {
-        numJokes: 10
-    }
+	static defaultProps = {
+		numJokes: 10
+	};
 
-    constructor(props){
-        super(props);
-        this.state = { jokes: [] };
-    }
+	constructor(props) {
+		super(props);
+		this.state = {
+			jokes: JSON.parse(window.localStorage.getItem('jokes') || '[]')
+		};
+		this.handleclick = this.handleclick.bind(this);
+	}
 
-    async componentDidMount() {
-        let jokes = [];
-        while(jokes.length < this.props.numJokes) {
-            let res = await Axios.get("https://icanhazdadjoke.com/", { 
-            headers: { Accept: "application/json" }
-            });
-            jokes.push({ 
-                id: uuidv4(),
-                text: res.data.joke,
-                votes: 0
-            });
-        }
-        this.setState({ jokes: jokes })
-    }
-    
-    handleVote(id, vote) {
-        this.setState(st => ({
-            jokes: st.jokes.map(j => 
-                j.id === id ? { ...j, votes: j.votes + vote } : j
-            )
-        }));
-    }
-    
-    render() {
-        return (
-            <div className="JokeList">
-                <div className="JokeList-sidebar">
-                    <h1 className="JokeList-title"><span>Cheezy</span> Jokes</h1>
-                    <img src="https://assets.dryicons.com/uploads/icon/svg/8927/0eb14c71-38f2-433a-bfc8-23d9c99b3647.svg" alt="jokes" />
-                    <button className="JokeList-button">New Jokes</button>
-                </div>
-                <div className="JokeList-jokes">
-                    {this.state.jokes.map(j => (
-                        <Joke 
-                            key={j.id} 
-                            votes={j.votes} 
-                            text={j.text} 
-                            thumbsUp={() => this.handleVote(j.id, 1)}
-                            thumbsDown={() => this.handleVote(j.id, -1)}
-                        />
-                    ))}
-                </div>
-            </div>
-        )
-    }
+	componentDidMount() {
+		if (this.state.jokes.length === 0) this.getJokes();
+	}
+
+	async getJokes() {
+		let jokes = [];
+		while (jokes.length < this.props.numJokes) {
+			let res = await Axios.get('https://icanhazdadjoke.com/', {
+				headers: { Accept: 'application/json' }
+			});
+			jokes.push({
+				id: uuidv4(),
+				text: res.data.joke,
+				votes: 0
+			});
+		}
+		this.setState(
+			(st) => ({
+				jokes: [ ...st.jokes, ...jokes ]
+			}),
+			() => window.localStorage.setItem('jokes', JSON.stringify(this.state.jokes))
+		);
+	}
+
+	handleVote(id, vote) {
+		this.setState(
+			(st) => ({
+				jokes: st.jokes.map((j) => (j.id === id ? { ...j, votes: j.votes + vote } : j))
+			}),
+			() => window.localStorage.setItem('jokes', JSON.stringify(this.state.jokes))
+		);
+	}
+
+	handleclick() {
+		this.getJokes();
+	}
+
+	render() {
+		return (
+			<div className="JokeList">
+				<div className="JokeList-sidebar">
+					<h1 className="JokeList-title">
+						<span>Cheezy</span> Jokes
+					</h1>
+					<img
+						src="https://assets.dryicons.com/uploads/icon/svg/8927/0eb14c71-38f2-433a-bfc8-23d9c99b3647.svg"
+						alt="jokes"
+					/>
+					<button className="JokeList-button" onClick={this.handleclick}>
+						New Jokes
+					</button>
+					<h4 className="JokeList-length">Amount: {this.state.jokes.length}</h4>
+				</div>
+				<div className="JokeList-jokes">
+					{this.state.jokes.map((j) => (
+						<Joke
+							key={j.id}
+							votes={j.votes}
+							text={j.text}
+							thumbsUp={() => this.handleVote(j.id, 1)}
+							thumbsDown={() => this.handleVote(j.id, -1)}
+						/>
+					))}
+				</div>
+			</div>
+		);
+	}
 }
 
 export default JokeList;
