@@ -16,6 +16,7 @@ class JokeList extends Component {
             jokes: JSON.parse(window.localStorage.getItem('jokes') || '[]'),
             loading: false
 		};
+		this.seenJokes = new Set(this.state.jokes.map(j => j.text))
 		this.handleclick = this.handleclick.bind(this);
 	}
 
@@ -24,24 +25,35 @@ class JokeList extends Component {
 	}
 
 	async getJokes() {
-		let jokes = [];
-		while (jokes.length < this.props.numJokes) {
-			let res = await Axios.get('https://icanhazdadjoke.com/', {
-				headers: { Accept: 'application/json' }
-			});
-			jokes.push({
-				id: uuidv4(),
-				text: res.data.joke,
-				votes: 0
-			});
+		try {
+			let jokes = [];
+			while (jokes.length < this.props.numJokes) {
+				let res = await Axios.get('https://icanhazdadjoke.com/', {
+					headers: { Accept: 'application/json' }
+				});
+				let newJoke = res.data.joke;
+				if(!this.seenJokes.has(newJoke)) {
+					jokes.push({
+						id: uuidv4(),
+						text: res.data.joke,
+						votes: 0
+					});
+				} else {
+					console.log("FOUND A DUPLICATE");
+					console.log(newJoke)
+				}
+			}
+			this.setState(
+				(st) => ({
+					loading: false,
+					jokes: [ ...st.jokes, ...jokes ]
+				}),
+				() => window.localStorage.setItem('jokes', JSON.stringify(this.state.jokes))
+			);
+		} catch(e) {
+			alert(e);
+			this.setState({ loading: false })
 		}
-		this.setState(
-			(st) => ({
-                loading: false,
-				jokes: [ ...st.jokes, ...jokes ]
-			}),
-			() => window.localStorage.setItem('jokes', JSON.stringify(this.state.jokes))
-		);
 	}
 
 	handleVote(id, vote) {
@@ -65,7 +77,8 @@ class JokeList extends Component {
                     <h1 className="JokeList-title">Loading...</h1>
                 </div>
             )
-        }
+		}
+		let jokes = this.state.jokes.sort((a, b) => b.votes - a.votes);
 		return (
 			<div className="JokeList">
 				<div className="JokeList-sidebar">
@@ -77,12 +90,12 @@ class JokeList extends Component {
 						alt="jokes"
 					/>
 					<button className="JokeList-button" onClick={this.handleclick}>
-						New Jokes
+						More Jokes
 					</button>
 					<h4 className="JokeList-length">Amount: {this.state.jokes.length}</h4>
 				</div>
 				<div className="JokeList-jokes">
-					{this.state.jokes.map((j) => (
+					{jokes.map((j) => (
 						<Joke
 							key={j.id}
 							votes={j.votes}
